@@ -4,7 +4,7 @@
 	<groupId>io.github.chadlwilson</groupId>
 	<artifactId>cloning</artifactId>
 	<packaging>bundle</packaging>
-	<version>1.11.0</version>
+	<version>1.12.0</version>
 	<name>cloning</name>
 	<url>https://github.com/chadlwilson/cloning/</url>
 	<description><![CDATA[
@@ -68,9 +68,6 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.5.2</version>
 				<configuration>
-					<argLine>
-						--add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
-					</argLine>
 					<includes>
 						<include>**/Test*.java</include>
 					</includes>

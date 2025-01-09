@@ -5,7 +5,6 @@ import org.objenesis.instantiator.ObjectInstantiator;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
-
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -31,7 +30,7 @@ public class Cloner {
 	private final Set<Class<?>> nullInstead = new HashSet<>();
 	private final Set<Class<? extends Annotation>> nullInsteadFieldAnnotations = new HashSet<>();
 	private final Map<Class<?>, IFastCloner> fastCloners = new HashMap<>();
-	private final ConcurrentHashMap<Class<?>, List<Field>> fieldsCache = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<Class<?>, Map<Field, Object /*cookie*/>> fieldsCache = new ConcurrentHashMap<>();
 	private List<ICloningStrategy> cloningStrategies;
 
 	private Map<Object, Object> ignoredInstances;
@@ -72,8 +71,8 @@ public class Cloner {
 
 	/**
 	 * this makes the cloner to set a transient field to null upon cloning.
-	 *
-	 * NOTE: primitive types can't be nulled. Their value will be set to default, i.e. 0 for int
+	 * <p>
+	 * NOTE: primitive types can't be null-ed. Their value will be set to default, i.e. 0 for int
 	 *
 	 * @param nullTransient true for transient fields to be nulled
 	 */
@@ -130,10 +129,10 @@ public class Cloner {
 		}
 	}
 
-	private IDeepCloner deepCloner = this::cloneInternal;
+	private final IDeepCloner deepCloner = this::cloneInternal;
 
 	protected Object fastClone(final Object o, final Map<Object, Object> clones) {
-		final Class<? extends Object> c = o.getClass();
+		final Class<?> c = o.getClass();
 		final IFastCloner fastCloner = fastCloners.get(c);
 		if (fastCloner != null) return fastCloner.clone(o, deepCloner, clones);
 		return null;
@@ -148,12 +147,10 @@ public class Cloner {
 
 	public void registerConstant(Class<?> c, String privateFieldName) {
 		try {
-			List<Field> fields = allFields(c);
-			for (Field field : fields) {
+			for (var entry : getFieldToCookieMap(c).entrySet()) {
+				Field field = entry.getKey();
 				if (field.getName().equals(privateFieldName)) {
-					field.setAccessible(true);
-					final Object v = field.get(null);
-					registerConstant(v);
+					registerConstant(Fields.ACCESSOR.get(field, entry.getValue(), null));
 					return;
 				}
 			}
@@ -202,7 +199,7 @@ public class Cloner {
 	/**
 	 * registers all static fields of these classes. Those static fields won't be cloned when an instance
 	 * of the class is cloned.
-	 *
+	 * <p>
 	 * This is useful i.e. when a static field object is added into maps or sets. At that point, there is no
 	 * way for the cloner to know that it was static except if it is registered.
 	 *
@@ -210,8 +207,7 @@ public class Cloner {
 	 */
 	public void registerStaticFields(final Class<?>... classes) {
 		for (final Class<?> c : classes) {
-			final List<Field> fields = allFields(c);
-			for (final Field field : fields) {
+			for (final Field field : getFieldToCookieMap(c).keySet()) {
 				final int mods = field.getModifiers();
 				if (Modifier.isStatic(mods) && !field.getType().isPrimitive()) {
 					registerConstant(c, field.getName());
@@ -237,15 +233,11 @@ public class Cloner {
 	 *          be added to the clone.
 	 */
 	public void dontClone(final Class<?>... c) {
-		for (final Class<?> cl : c) {
-			ignored.add(cl);
-		}
+		Collections.addAll(ignored, c);
 	}
 
 	public void dontCloneInstanceOf(final Class<?>... c) {
-		for (final Class<?> cl : c) {
-			ignoredInstanceOf.add(cl);
-		}
+		Collections.addAll(ignoredInstanceOf, c);
 	}
 
 	public void setDontCloneInstanceOf(final Class<?>... c) {
@@ -258,9 +250,7 @@ public class Cloner {
 	 * @param c the classes to nullify during cloning
 	 */
 	public void nullInsteadOfClone(final Class<?>... c) {
-		for (final Class<?> cl : c) {
-			nullInstead.add(cl);
-		}
+		Collections.addAll(nullInstead, c);
 	}
 
 	// spring framework friendly version of nullInsteadOfClone
@@ -275,9 +265,7 @@ public class Cloner {
 	 */
 	@SafeVarargs
 	final public void nullInsteadOfCloneFieldAnnotation(final Class<? extends Annotation>... a) {
-		for (final Class<? extends Annotation> an : a) {
-			nullInsteadFieldAnnotations.add(an);
-		}
+		Collections.addAll(nullInsteadFieldAnnotations, a);
 	}
 
 	// spring framework friendly version of nullInsteadOfCloneAnnotation
@@ -291,9 +279,7 @@ public class Cloner {
 	 * @param c the immutable class
 	 */
 	public void registerImmutable(final Class<?>... c) {
-		for (final Class<?> cl : c) {
-			ignored.add(cl);
-		}
+		Collections.addAll(ignored, c);
 	}
 
 	// spring framework friendly version of registerImmutable
@@ -425,7 +411,7 @@ public class Cloner {
 		return false;
 	}
 
-	private Map<Class, IDeepCloner> cloners = new ConcurrentHashMap<>();
+	private final Map<Class<?>, IDeepCloner> cloners = new ConcurrentHashMap<>();
 
 	@SuppressWarnings("unchecked")
 	protected <T> T cloneInternal(T o, Map<Object, Object> clones) {
@@ -484,9 +470,9 @@ public class Cloner {
 
 	private class CloneArrayCloner implements IDeepCloner {
 
-		private boolean primitive;
-		private boolean immutable;
-		private Class<?> componentType;
+		private final boolean primitive;
+		private final boolean immutable;
+		private final Class<?> componentType;
 
 		CloneArrayCloner(Class<?> clz) {
 			primitive = clz.getComponentType().isPrimitive();
@@ -521,8 +507,8 @@ public class Cloner {
 	}
 
 	private class FastClonerCloner implements IDeepCloner {
-		private IFastCloner fastCloner;
-		private IDeepCloner cloneInternal;
+		private final IFastCloner fastCloner;
+		private final IDeepCloner cloneInternal;
 
 		FastClonerCloner(IFastCloner fastCloner) {
 			this.fastCloner = fastCloner;
@@ -536,8 +522,8 @@ public class Cloner {
 		}
 	}
 
-	private static IDeepCloner IGNORE_CLONER = new IgnoreClassCloner();
-	private static IDeepCloner NULL_CLONER = new NullClassCloner();
+	private static final IDeepCloner IGNORE_CLONER = new IgnoreClassCloner();
+	private static final IDeepCloner NULL_CLONER = new NullClassCloner();
 
 	private static class IgnoreClassCloner implements IDeepCloner {
 		public <T> T deepClone(T o, Map<Object, Object> clones) {
@@ -572,6 +558,7 @@ public class Cloner {
 	private class CloneObjectCloner implements IDeepCloner {
 
 		private final Field[] fields;
+		private final Object[] cookies;
 		private final boolean[] shouldClone;
 		private final int numFields;
 		private final ObjectInstantiator<?> instantiator;
@@ -586,9 +573,6 @@ public class Cloner {
 					int modifiers = f.getModifiers();
 					boolean isStatic = Modifier.isStatic(modifiers);
 					if (!isStatic) {
-						if (!f.isAccessible()) {
-							f.setAccessible(true);
-						}
 						if (!(nullTransient && Modifier.isTransient(modifiers)) && !isFieldNullInsteadBecauseOfAnnotation(f)) {
 							l.add(f);
 							boolean shouldClone = (cloneSynthetics || !f.isSynthetic()) && (cloneAnonymousParent || !isAnonymousParent(f));
@@ -600,8 +584,10 @@ public class Cloner {
 			fields = l.toArray(EMPTY_FIELD_ARRAY);
 			numFields = fields.length;
 			shouldClone = new boolean[numFields];
-			for (int i = 0; i < shouldCloneList.size(); i++) {
+			cookies = new Object[numFields];
+			for (int i = 0; i < numFields; i++) {
 				shouldClone[i] = shouldCloneList.get(i);
+				cookies[i] = Fields.ACCESSOR.getCookie(fields[i]);
 			}
 			instantiator = instantiationStrategy.getInstantiatorOf(clz);
 		}
@@ -629,18 +615,22 @@ public class Cloner {
 					clones.put(o, newInstance);
 					for (int i = 0; i < numFields; i++) {
 						Field field = fields[i];
-						Object fieldObject = field.get(o);
-						Object fieldObjectClone = shouldClone[i] ? applyCloningStrategy(clones, o, fieldObject, field) : fieldObject;
-						field.set(newInstance, fieldObjectClone);
-						if (dumpCloned != null && fieldObjectClone != fieldObject) {
-							dumpCloned.cloning(field, o.getClass());
+						Object cookie = cookies[i];
+						if (shouldClone[i]) {
+							Object fieldObject = Fields.ACCESSOR.get(field, cookie, o);
+							Object fieldObjectClone = applyCloningStrategy(clones, o, fieldObject, field);
+							Fields.ACCESSOR.set(field, cookie, newInstance, fieldObjectClone);
+							if (dumpCloned != null && fieldObjectClone != fieldObject) {
+								dumpCloned.cloning(field, o.getClass());
+							}
+						} else {
+							Fields.ACCESSOR.copy(field, cookie, o, newInstance);
 						}
 					}
 				} else {
 					// Shallow clone
 					for (int i = 0; i < numFields; i++) {
-						Field field = fields[i];
-						field.set(newInstance, field.get(o));
+						Fields.ACCESSOR.copy(fields[i], cookies[i], o, newInstance);
 					}
 				}
 				return newInstance;
@@ -676,8 +666,8 @@ public class Cloner {
 	public <T, E extends T> void copyPropertiesOfInheritedClass(final T src, final E dest) {
 		if (src == null) throw new IllegalArgumentException("src can't be null");
 		if (dest == null) throw new IllegalArgumentException("dest can't be null");
-		final Class<? extends Object> srcClz = src.getClass();
-		final Class<? extends Object> destClz = dest.getClass();
+		final Class<?> srcClz = src.getClass();
+		final Class<?> destClz = dest.getClass();
 		if (srcClz.isArray()) {
 			if (!destClz.isArray())
 				throw new IllegalArgumentException("can't copy from array to non-array class " + destClz);
@@ -688,19 +678,15 @@ public class Cloner {
 			}
 			return;
 		}
-		final List<Field> fields = allFields(srcClz);
-		final List<Field> destFields = allFields(dest.getClass());
-		for (final Field field : fields) {
+		final Set<Field> destFields = getFieldToCookieMap(dest.getClass()).keySet();
+		for (var entry : getFieldToCookieMap(srcClz).entrySet()) {
+			Field field = entry.getKey();
 			if (!Modifier.isStatic(field.getModifiers())) {
 				try {
-					final Object fieldObject = field.get(src);
-					field.setAccessible(true);
 					if (destFields.contains(field)) {
-						field.set(dest, fieldObject);
+						Fields.ACCESSOR.copy(field, entry.getValue(), src, dest);
 					}
-				} catch (final IllegalArgumentException e) {
-					throw new CloningException(e);
-				} catch (final IllegalAccessException e) {
+				} catch (final IllegalArgumentException | IllegalAccessException e) {
 					throw new CloningException(e);
 				}
 			}
@@ -708,35 +694,42 @@ public class Cloner {
 	}
 
 	/**
-	 * reflection utils
+	 * Return a list of the {@link Field}s to include for a given class.
+	 *
+	 * <p>This method may be overridden to exclude certain fields from cloning.
+	 *
+	 * @return the field list
 	 */
-	private void addAll(final List<Field> l, final Field[] fields) {
-		for (final Field field : fields) {
-			if (!field.isAccessible()) {
-				field.setAccessible(true);
-			}
-			l.add(field);
+	protected List<Field> allFields(Class<?> c) {
+		List<Field> l = new ArrayList<>();
+		while (c != Object.class && c != null) {
+			Collections.addAll(l, c.getDeclaredFields());
+			c = c.getSuperclass();
 		}
+		return l;
 	}
 
 	/**
-	 * reflection utils, override this to choose which fields to clone
-	 * @param c class to get fields from
-	 * @return List of relevant fields in that class
+	 * Return a mapping of {@link Field}s to their {@link Fields.Accessor#getCookie cookies}.
+	 *
+	 * <p>This method is not overrideable, but only exposes the fields from {@link #allFields}.
+	 *
+	 * @return the map of fields to cookies
 	 */
-	protected List<Field> allFields(final Class<?> c) {
-		List<Field> l = fieldsCache.get(c);
-		if (l == null) {
-			l = new LinkedList<>();
-			final Field[] fields = c.getDeclaredFields();
-			addAll(l, fields);
-			Class<?> sc = c;
-			while ((sc = sc.getSuperclass()) != Object.class && sc != null) {
-				addAll(l, sc.getDeclaredFields());
+	private Map<Field, Object> getFieldToCookieMap(final Class<?> c) {
+		Map<Field, Object> m = fieldsCache.get(c);
+		if (m == null) {
+			List<Field> fields = allFields(c);
+			m = new HashMap<>();
+			for (final Field field : fields) {
+				m.put(field, Fields.ACCESSOR.getCookie(field));
 			}
-			fieldsCache.putIfAbsent(c, l);
+			Map<Field, Object> m0 = fieldsCache.putIfAbsent(c, m);
+			if (m0 != null) {
+				m = m0;
+			}
 		}
-		return l;
+		return m;
 	}
 
 	public boolean isDumpClonedClasses() {
@@ -794,7 +787,7 @@ public class Cloner {
 	/**
 	 * @return if Cloner lib is in a shared jar folder for a container (i.e. tomcat/shared), then
 	 * 		this method is preferable in order to instantiate cloner. Please
-	 * 		see https://code.google.com/p/cloning/issues/detail?id=23
+	 * 		see <a href="https://code.google.com/p/cloning/issues/detail?id=23">here</a>
 	 */
 	public static Cloner shared() {
 		return new Cloner(new ObjenesisInstantiationStrategy());
