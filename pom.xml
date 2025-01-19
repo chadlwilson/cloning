@@ -4,7 +4,7 @@
 	<groupId>io.github.chadlwilson</groupId>
 	<artifactId>cloning</artifactId>
 	<packaging>bundle</packaging>
-	<version>1.12.0</version>
+	<version>1.12.0-gocd</version>
 	<name>cloning</name>
 	<url>https://github.com/chadlwilson/cloning/</url>
 	<description><![CDATA[
