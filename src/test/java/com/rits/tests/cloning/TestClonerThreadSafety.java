@@ -37,7 +37,7 @@ public class TestClonerThreadSafety
 			final Calendar clone = cloner.deepClone(cal);
 			assertNotSame(cal, clone);
 			assertNotSame(cal.getTime(), clone.getTime());
-			assertTrue(cal.equals(clone));
+            assertEquals(cal, clone);
 
 			if (r.nextBoolean())
 			{

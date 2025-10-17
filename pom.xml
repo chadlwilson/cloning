@@ -26,7 +26,7 @@
 	<developers>
 		<developer>
 			<name>Chad Wilson</name>
-			<email>chadw@thoughtworks.com</email>
+			<email>29788154+chadlwilson@users.noreply.github.com</email>
 			<organizationUrl>https://github.com/chadlwilson</organizationUrl>
 		</developer>
 	</developers>
@@ -44,20 +44,30 @@
 	</issueManagement>
 	<build>
 		<plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+            </plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.14.1</version>
 				<configuration>
-					<release>11</release>
-					<compilerArgument>-Xlint:unchecked</compilerArgument>
+					<release>17</release>
 				</configuration>
 			</plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-install-plugin</artifactId>
+                <version>3.1.4</version>
+            </plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.5.4</version>
 				<configuration>
+                    <argLine>--add-opens=java.base/java.util=ALL-UNNAMED</argLine>
 					<includes>
 						<include>**/Test*.java</include>
 					</includes>
@@ -121,6 +131,11 @@
 				<version>6.0.0</version>
 				<extensions>true</extensions>
 			</plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>3.1.4</version>
+            </plugin>
 		</plugins>
 	</build>
 	<dependencies>
@@ -136,37 +151,4 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
-	<profiles>
-		<profile>
-			<id>sonatype-deploy</id>
-			<build>
-				<plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>3.2.8</version>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.sonatype.central</groupId>
-                        <artifactId>central-publishing-maven-plugin</artifactId>
-                        <version>0.9.0</version>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <publishingServerId>central</publishingServerId>
-                            <autoPublish>false</autoPublish>
-                        </configuration>
-                    </plugin>
-				</plugins>
-			</build>
-		</profile>
-	</profiles>
 </project>

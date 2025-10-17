@@ -5,11 +5,14 @@ import com.rits.cloning.FastClonerHashMap;
 import com.rits.cloning.Immutable;
 import com.rits.tests.cloning.TestCloner.SynthOuter.Inner;
 import com.rits.tests.cloning.domain.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -28,7 +31,8 @@ import static org.junit.jupiter.api.Assertions.*;
 public class TestCloner {
     private final Cloner cloner = new Cloner();
 
-    {
+    @BeforeEach
+    void setup() {
         cloner.setDumpClonedClasses(false);
     }
 
@@ -436,6 +440,7 @@ public class TestCloner {
 
     @Test
     public void testCloneStability() {
+        Random random = new Random();
         for (int i = 0; i < 10; i++) {
             final Complex complex = new Complex();
             complex.setS("x1");
@@ -449,7 +454,7 @@ public class TestCloner {
                 h2.add("string" + j);
                 h1.add(Calendar.getInstance());
                 h2.add(new Date());
-                l.add(new Random());
+                l.add(BigInteger.valueOf(random.nextLong()));
             }
 
             l.add(h1);
