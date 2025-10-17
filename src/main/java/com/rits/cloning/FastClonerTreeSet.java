@@ -1,7 +1,5 @@
 package com.rits.cloning;
 
-import com.rits.cloning.IFastCloner;
-
 import java.util.Map;
 import java.util.TreeSet;
 

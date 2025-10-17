@@ -1,19 +1,16 @@
 package com.rits.tests.cloning;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.List;
-import java.util.Random;
-import java.util.TreeMap;
-
 import com.rits.cloning.Cloner;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 
 /**
  * test thread safety of cloner

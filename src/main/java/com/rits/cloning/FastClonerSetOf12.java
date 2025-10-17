@@ -1,6 +1,8 @@
 package com.rits.cloning;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class FastClonerSetOf12 implements IFastCloner {
     @SuppressWarnings({"unchecked", "rawtypes"})
