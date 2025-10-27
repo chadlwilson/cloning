@@ -16,7 +16,7 @@ jobs:
           distribution: 'temurin'
       - run: mvn --batch-mode --update-snapshots verify
       - run: mkdir staging && cp target/*-dist.tar.gz target/*.jar staging
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: ${{ github.ref == 'refs/heads/master' && matrix.java-version == 25 }}
         with:
           name: Package
